@@ -1,0 +1,39 @@
+<service name="git_buildpackage">
+  <summary>An OBS service that uses git buildpackage</summary>
+  <description>This OBS service is using git buildpackage to create the debian
+  source package.</description>
+
+  <parameter name="url">
+    <description>URL to clone GIT repository from</description>
+    <required/>
+  </parameter>
+
+  <parameter name="revision">
+    <description>
+       When using git, revision may refer to any of the following:
+      
+       * explicit SHA1: a1b2c3d4....
+         - the SHA1 must be reachable from a default clone/fetch
+           (generally, must be reachable from some branch or tag on the
+           remote).
+         - set by: git checkout ${SHA1}
+      
+       * short branch name: "master", "devel" etc.
+         - set by: git checkout ${branch}
+                   git pull
+      
+       * explicit ref: refs/heads/master, refs/tags/v1.2.3,
+         refs/changes/49/11249/1
+         - set by: git fetch ${url} ${revision}:${revision}
+                   git checkout ${revision}
+    </description>
+  </parameter>
+
+  <parameter name="submodules">
+    <description>Whether or not to include git submodules.  Default is 'enable'</description>
+    <allowedvalue>enable</allowedvalue>
+    <allowedvalue>disable</allowedvalue>
+  </parameter>
+
+</service>
+

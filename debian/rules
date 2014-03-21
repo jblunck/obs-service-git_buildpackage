@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+DESTDIR=debian/obs-service-git-buildpackage
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	dh_auto_install
+	mkdir -p $(DESTDIR)/usr/lib/obs/service
+	install -m0755 git_buildpackage $(DESTDIR)/usr/lib/obs/service
+	install -m0644 git_buildpackage.service $(DESTDIR)/usr/lib/obs/service

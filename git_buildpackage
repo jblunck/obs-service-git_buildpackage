@@ -1,0 +1,146 @@
+#!/bin/bash -e
+
+error () {
+  echo "ERROR: $*"
+  exit 1
+}
+
+safe_run () {
+  if ! "$@"; then
+    error "$* failed; aborting!"
+  fi
+}
+
+create_dirs ()
+{
+    trap '[ -d "${EXPORT_DIR}" ] && rm -rf "${EXPORT_DIR}"' EXIT
+    EXPORT_DIR=$(mktemp -d $(pwd)/.$(basename $0).XXXXXXXXXX)
+
+    CLONE_DIR=${EXPORT_DIR}/repo
+    echo "New GIT checkout to ${CLONE_DIR}"
+}
+
+initial_clone ()
+{
+    [ -z "${GIT_URL}" ] && error "Invalid empty URL"
+    [ -z "${CLONE_DIR}" ] && error "Invalid empty CLONE_DIR"
+
+    echo "Fetching from ${GIT_URL} ..."
+
+    safe_run gbp-clone "${GIT_URL}" "${CLONE_DIR}"
+    if [ "${GIT_USE_SUBMODULES}" == "enable" ] ; then
+	safe_run cd "${CLONE_DIR}"
+	safe_run git submodule update --init --recursive
+	safe_run cd -
+    fi
+}
+
+create_source_package ()
+{
+    [ -z "${CLONE_DIR}" ] && error "Invalid empty CLONE_DIR"
+    [ -z "${EXPORT_DIR}" ] && error "Invalid empty EXPORT_DIR"
+
+    safe_run cd "${CLONE_DIR}"
+
+    # Add --git-pristine-tar ?
+    safe_run git buildpackage --git-verbose --git-notify=off \
+	--git-force-create \
+	--git-export-dir="${EXPORT_DIR}" --git-export="${GIT_REV}" \
+	${BUILD_ARGS}
+}
+
+copy_source_package ()
+{
+    [ -z "${EXPORT_DIR}" ] && error "Invalid empty EXPORT_DIR"
+    [ -z "${OUT_DIR}" ] && error "Invalid empty OUT_DIR"
+
+    local SOURCES=$(dpkg-scansources "${EXPORT_DIR}" | sed -n '/^Files: $/ {
+	# we do not want the Files marker
+	s/^Files: $//
+	N
+	# match lines that start with a space and add them to hold buffer but
+	# unroll the first loop element to not get the newline from H command
+	/\n / {
+		s/\n //
+		h
+		# empty pattern space but continue
+		s/.*//
+	}
+	:loop
+	N
+	/\n / {
+		s/\n //
+		H
+		# empty pattern space but continue
+		s/.*//
+		b loop
+	}
+	x
+	p
+}' | awk '{ print $3 }')
+
+    [ -z "${SOURCES}" ] && error "Empty source package"
+
+    mkdir -p ${OUT_DIR}
+    for file in ${SOURCES} ; do
+	cp -f ${EXPORT_DIR}/$file ${OUT_DIR}
+    done
+}
+
+main ()
+{
+    # default values
+    : ${GIT_REV:="master"}
+    : ${GIT_USE_SUBMODULES:="enable"}
+    : ${BUILD_ARGS:="-uc -us -S"}
+    : ${OUT_DIR:=$(pwd)}
+
+    while test $# -gt 0; do
+	case $1 in
+	    *-url)
+		GIT_URL="$2"
+		shift
+		;;
+	    *-revision)
+		GIT_REV="$2"
+		shift
+		;;
+	    *-submodules)
+		GIT_USE_SUBMODULES="$2"
+		shift
+		;;
+	    *-outdir)
+		OUT_DIR="$2"
+		shift
+		;;
+	    *-build_args)
+		BUILD_ARGS="$2"
+		shift
+		;;
+	    *)
+		echo Unknown parameter $1.
+		echo 'Usage: set_version --version $VERSION --file $FILE --basename $BASENAME --outdir $OUT'
+		exit 1
+		;;
+	esac
+	shift
+    done
+
+    # prepare export and repository clone directory
+    create_dirs
+
+    # create GIT clone
+    initial_clone
+
+    # run git buildpackage to create source package
+    create_source_package
+
+    copy_source_package
+}
+
+main "$@"
+exit 0
+
+# Local Variables:
+# mode: shell
+# End:

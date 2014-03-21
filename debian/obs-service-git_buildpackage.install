@@ -1,0 +1,2 @@
+git_buildpackage 		/usr/lib/obs/service/
+git_buildpackage.service	/usr/lib/obs/service/

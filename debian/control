@@ -1,0 +1,13 @@
+Source: obs-service-git-buildpackage
+Priority: extra
+Section: misc
+Maintainer: Vyatta <sven@vyatta.com>
+Standards-Version: 3.9.4
+Build-Depends: debhelper (>= 9)
+
+Package: obs-service-git-buildpackage
+Section: misc
+Architecture: all
+Depends: ${misc:Depends}, devscripts, fakeroot, git-buildpackage, gawk
+Description: $prefix OBS source service version
+ This package sets up the version for an OBS package build
