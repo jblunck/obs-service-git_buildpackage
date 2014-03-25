@@ -20,10 +20,9 @@ Name:           obs-service-git_buildpackage
 Summary:        An OBS source service: Create Debian source package from GIT
 License:        GPL-2.0+
 Group:          Development/Tools/Building
-Version:        0.1
+Version:        1.0
 Release:        0
-Source:         git_buildpackage
-Source1:        git_buildpackage.service
+Source:         %{name}-%{version}.tar.gz
 Requires:       sed
 Requires:       awk
 Requires:       git-buildpackage
@@ -39,14 +38,14 @@ Very simply script to update the version in .spec or .dsc files according to
 a given version or to the existing files.
 
 %prep
-%setup -q -D -T 0 -n .
+%setup -q -n obs-service-git_buildpackage-%{version}
 
 %build
 
 %install
 mkdir -p $RPM_BUILD_ROOT/usr/lib/obs/service
-install -m 0755 %{SOURCE0} $RPM_BUILD_ROOT/usr/lib/obs/service
-install -m 0644 %{SOURCE1} $RPM_BUILD_ROOT/usr/lib/obs/service
+install -m 0755 git_buildpackage $RPM_BUILD_ROOT/usr/lib/obs/service
+install -m 0644 git_buildpackage.service $RPM_BUILD_ROOT/usr/lib/obs/service
 
 %files
 %defattr(-,root,root)
