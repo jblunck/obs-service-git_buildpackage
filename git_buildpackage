@@ -16,18 +16,19 @@ create_dirs ()
     trap '[ -d "${EXPORT_DIR}" ] && rm -rf "${EXPORT_DIR}"' EXIT
     EXPORT_DIR=$(mktemp -d $(pwd)/.$(basename $0).XXXXXXXXXX)
 
-    CLONE_DIR=${EXPORT_DIR}/repo
+    CLONE_DIR=${EXPORT_DIR}/"$(X=${GIT_URL##*/} ; echo ${X%.git})"
     echo "New GIT checkout to ${CLONE_DIR}"
 }
 
 initial_clone ()
 {
-    [ -z "${GIT_URL}" ] && error "Invalid empty URL"
     [ -z "${CLONE_DIR}" ] && error "Invalid empty CLONE_DIR"
 
     echo "Fetching from ${GIT_URL} ..."
 
-    safe_run gbp-clone "${GIT_URL}" "${CLONE_DIR}"
+    safe_run cd "${EXPORT_DIR}"
+    safe_run gbp-clone "${GIT_URL}"
+
     if [ "${GIT_USE_SUBMODULES}" == "enable" ] ; then
 	safe_run cd "${CLONE_DIR}"
 	safe_run git submodule update --init --recursive
@@ -125,6 +126,8 @@ main ()
 	esac
 	shift
     done
+
+    [ -z "${GIT_URL}" ] && error "Invalid empty URL"
 
     # prepare export and repository clone directory
     create_dirs
