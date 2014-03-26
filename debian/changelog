@@ -1,5 +1,6 @@
 obs-service-git-buildpackage (1.0) UNRELEASED; urgency=low
 
   * Initial release.
+  * Switch to dpkg-source 3.0 (quilt) format
 
  -- Jan Blunck <jblunck@vyatta.com>  Fri, 21 Mar 2014 16:45:43 -0700
