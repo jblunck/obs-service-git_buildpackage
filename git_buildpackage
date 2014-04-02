@@ -27,7 +27,7 @@ initial_clone ()
     echo "Fetching from ${GIT_URL} ..."
 
     safe_run cd "${EXPORT_DIR}"
-    safe_run gbp-clone "${GIT_URL}"
+    safe_run gbp-clone ${GIT_PRISTINE_TAR} "${GIT_URL}"
 
     if [ "${GIT_USE_SUBMODULES}" == "enable" ] ; then
 	safe_run cd "${CLONE_DIR}"
@@ -43,11 +43,10 @@ create_source_package ()
 
     safe_run cd "${CLONE_DIR}"
 
-    # Add --git-pristine-tar ?
     safe_run git buildpackage --git-verbose --git-notify=off \
 	--git-force-create \
 	--git-export-dir="${EXPORT_DIR}" --git-export="${GIT_REV}" \
-	${BUILD_ARGS}
+	${GIT_PRISTINE_TAR} ${BUILD_ARGS}
 }
 
 copy_source_package ()
@@ -93,6 +92,7 @@ main ()
     # default values
     : ${GIT_REV:="master"}
     : ${GIT_USE_SUBMODULES:="enable"}
+    : ${GIT_PRISTINE_TAR:="--pristine-tar"}
     : ${BUILD_ARGS:="-uc -us -S"}
     : ${OUT_DIR:=$(pwd)}
 
@@ -116,6 +116,12 @@ main ()
 		;;
 	    *-build_args)
 		BUILD_ARGS="$2"
+		shift
+		;;
+	    *-pristine-tar)
+		if [ "$2" = "disable" ] ; then
+		    GIT_PRISTINE_TAR="--no-pristine-tar"
+		fi
 		shift
 		;;
 	    *)

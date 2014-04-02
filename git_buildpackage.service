@@ -35,5 +35,11 @@
     <allowedvalue>disable</allowedvalue>
   </parameter>
 
+  <parameter name="pristine-tar">
+    <description>Use pristine-tar.  Default is 'enable'</description>
+    <allowedvalue>enable</allowedvalue>
+    <allowedvalue>disable</allowedvalue>
+  </parameter>
+
 </service>
 
