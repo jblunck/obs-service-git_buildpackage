@@ -93,7 +93,8 @@ main ()
     : ${GIT_REV:="master"}
     : ${GIT_USE_SUBMODULES:="enable"}
     : ${GIT_PRISTINE_TAR:="--git-pristine-tar"}
-    : ${BUILD_ARGS:="-uc -us -S"}
+    # do not clean source tree, do not sign source and changes
+    : ${BUILD_ARGS:="--git-cleaner=\"true\" -nc -uc -us -S"}
     : ${OUT_DIR:=$(pwd)}
 
     while test $# -gt 0; do
