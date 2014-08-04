@@ -1,7 +1,13 @@
-obs-service-git-buildpackage (1.0) UNRELEASED; urgency=low
+obs-service-git-buildpackage (1.1) unstable; urgency=low
+
+  * Rewrite in python
+
+ -- Jan Blunck <jblunck@vyatta.com>  Mon, 04 Aug 2014 18:35:56 +0200
+
+obs-service-git-buildpackage (1.0) unstable; urgency=low
 
   * Initial release.
   * Switch to dpkg-source 3.0 (quilt) format
   * Add support for pristine-tar 
 
- -- Jan Blunck <jblunck@vyatta.com>  Fri, 21 Mar 2014 16:45:43 -0700
+ -- Jan Blunck <jblunck@vyatta.com>  Wed, 02 Apr 2014 12:34:56 +0200
