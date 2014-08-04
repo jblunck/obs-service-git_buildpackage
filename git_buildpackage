@@ -1,156 +1,235 @@
-#!/bin/bash -e
+#!/usr/bin/env python
+#
+# (C) 2014 by Jan Blunck <jblunck@infradead.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# See http://www.gnu.org/licenses/gpl-2.0.html for full license text.
 
-error () {
-  echo "ERROR: $*"
-  exit 1
-}
+import argparse
+import datetime
+import os
+import shutil
+import re
+import fnmatch
+import sys
+import tarfile
+import subprocess
+import atexit
+import hashlib
+import tempfile
+import logging
+import glob
+import ConfigParser
+import StringIO
 
-safe_run () {
-  if ! "$@"; then
-    error "$* failed; aborting!"
-  fi
-}
 
-create_dirs ()
-{
-    trap '[ -d "${EXPORT_DIR}" ] && rm -rf "${EXPORT_DIR}"' EXIT
-    EXPORT_DIR=$(mktemp -d $(pwd)/.$(basename $0).XXXXXXXXXX)
+CLEANUP_DIRS = []
 
-    CLONE_DIR=${EXPORT_DIR}/"$(X=${GIT_URL##*/} ; echo ${X%.git})"
-    echo "New GIT checkout to ${CLONE_DIR}"
-}
 
-initial_clone ()
-{
-    [ -z "${CLONE_DIR}" ] && error "Invalid empty CLONE_DIR"
+def cleanup(dirs):
+    '''Cleaning temporary directories.'''
 
-    echo "Fetching from ${GIT_URL} ..."
+    logging.info("Cleaning: %s", ' '.join(dirs))
 
-    safe_run cd "${EXPORT_DIR}"
-    safe_run gbp-clone ${GIT_PRISTINE_TAR/--git-/--} "${GIT_URL}"
+    for d in dirs:
+        if not os.path.exists(d):
+            continue
+        for root, dirs, files in os.walk(d, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
+        os.rmdir(d)
 
-    if [ "${GIT_USE_SUBMODULES}" == "enable" ] ; then
-	safe_run cd "${CLONE_DIR}"
-	safe_run git submodule update --init --recursive
-	safe_run cd -
-    fi
-}
 
-create_source_package ()
-{
-    [ -z "${CLONE_DIR}" ] && error "Invalid empty CLONE_DIR"
-    [ -z "${EXPORT_DIR}" ] && error "Invalid empty EXPORT_DIR"
+def safe_run(cmd, cwd, interactive=False):
+    """Execute the command cmd in the working directory cwd and check return
+    value. If the command returns non-zero raise a SystemExit exception."""
 
-    safe_run cd "${CLONE_DIR}"
+    logging.debug("COMMAND: %s", cmd)
 
-    safe_run git buildpackage --git-verbose --git-notify=off \
-	--git-force-create \
-	--git-export-dir="${EXPORT_DIR}" --git-export="${GIT_REV}" \
-	${GIT_PRISTINE_TAR} ${BUILD_ARGS}
-}
+    # Ensure we get predictable results when parsing the output of commands
+    # like 'git branch'
+    env = os.environ.copy()
+    env['LANG'] = 'C'
 
-copy_source_package ()
-{
-    [ -z "${EXPORT_DIR}" ] && error "Invalid empty EXPORT_DIR"
-    [ -z "${OUT_DIR}" ] && error "Invalid empty OUT_DIR"
+    proc = subprocess.Popen(cmd,
+                            shell=False,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            cwd=cwd,
+                            env=env)
+    output = ''
+    if interactive:
+        while proc.poll() is None:
+            for line in proc.stdout:
+                print line.rstrip()
+                output = '\n'.join([output, line.rstrip()])
+    else:
+        output = proc.communicate()[0]
 
-    local SOURCES=$(dpkg-scansources "${EXPORT_DIR}" | sed -n '/^Files: $/ {
-	# we do not want the Files marker
-	s/^Files: $//
-	N
-	# match lines that start with a space and add them to hold buffer but
-	# unroll the first loop element to not get the newline from H command
-	/\n / {
-		s/\n //
-		h
-		# empty pattern space but continue
-		s/.*//
-	}
-	:loop
-	N
-	/\n / {
-		s/\n //
-		H
-		# empty pattern space but continue
-		s/.*//
-		b loop
-	}
-	x
-	p
-}' | awk '{ print $3 }')
+    if proc.returncode:
+        logging.info("ERROR(%d): %s", proc.returncode, repr(output))
+        sys.exit("Command failed(%d): %s" % (proc.returncode, repr(output)))
+    else:
+        logging.debug("RESULT(%d): %s", proc.returncode, repr(output))
+    return (proc.returncode, output)
 
-    [ -z "${SOURCES}" ] && error "Empty source package"
 
-    mkdir -p ${OUT_DIR}
-    for file in ${SOURCES} ; do
-	cp -f ${EXPORT_DIR}/$file ${OUT_DIR}
-    done
-}
+def switch_revision(clone_dir, revision):
+    """Switch sources to revision. The GIT revision may refer to any of the
+    following:
+    - explicit SHA1: a1b2c3d4....
+    - the SHA1 must be reachable from a default clone/fetch (generally, must be
+      reachable from some branch or tag on the remote).
+    - short branch name: "master", "devel" etc.
+    - explicit ref: refs/heads/master, refs/tags/v1.2.3,
+      refs/changes/49/11249/1
+    """
 
-main ()
-{
-    # default values
-    : ${GIT_REV:="master"}
-    : ${GIT_USE_SUBMODULES:="enable"}
-    : ${GIT_PRISTINE_TAR:="--git-pristine-tar"}
-    # do not clean source tree, do not sign source and changes
-    : ${BUILD_ARGS:="--git-cleaner=\"true\" -nc -uc -us -S"}
-    : ${OUT_DIR:=$(pwd)}
+    if revision is None:
+        revision = 'master'
 
-    while test $# -gt 0; do
-	case $1 in
-	    *-url)
-		GIT_URL="$2"
-		shift
-		;;
-	    *-revision)
-		GIT_REV="$2"
-		shift
-		;;
-	    *-submodules)
-		GIT_USE_SUBMODULES="$2"
-		shift
-		;;
-	    *-outdir)
-		OUT_DIR="$2"
-		shift
-		;;
-	    *-build_args)
-		BUILD_ARGS="$2"
-		shift
-		;;
-	    *-pristine-tar)
-		if [ "$2" = "disable" ] ; then
-		    GIT_PRISTINE_TAR="--git-no-pristine-tar"
-		fi
-		shift
-		;;
-	    *)
-		echo Unknown parameter $1.
-		echo 'Usage: set_version --version $VERSION --file $FILE --basename $BASENAME --outdir $OUT'
-		exit 1
-		;;
-	esac
-	shift
-    done
+    revs = [x + revision for x in ['origin/', '']]
+    for rev in revs:
+        try:
+            safe_run(['git', 'rev-parse', '--verify', '--quiet', rev],
+                     cwd=clone_dir)
+            text = safe_run(['git', 'reset', '--hard', rev], cwd=clone_dir)[1]
+            print text.rstrip()
+            break
+        except SystemExit:
+            continue
+    else:
+        sys.exit('%s: No such revision' % revision)
 
-    [ -z "${GIT_URL}" ] && error "Invalid empty URL"
 
-    # prepare export and repository clone directory
-    create_dirs
+def fetch_upstream(url, revision, out_dir):
+    """Fetch sources from repository and checkout given revision."""
 
-    # create GIT clone
-    initial_clone
+    # calc_dir_to_clone_to
+    basename = os.path.basename(re.sub(r'/.git$', '', url))
+    clone_dir = os.path.abspath(os.path.join(out_dir, basename))
 
-    # run git buildpackage to create source package
-    create_source_package
+    if not os.path.isdir(clone_dir):
+        # initial clone
+        os.mkdir(clone_dir)
 
-    copy_source_package
-}
+        safe_run(['git', 'clone', '--no-checkout', url, clone_dir],
+                 cwd=out_dir, interactive=sys.stdout.isatty())
+#        safe_run(['git', 'submodule', 'update', '--init', '--recursive'],
+#                 cwd=clone_dir)
+    else:
+        logging.info("Detected cached repository...")
+#        UPDATE_CACHE_COMMANDS[scm](url, clone_dir, revision)
 
-main "$@"
-exit 0
+    # switch_to_revision
+    switch_revision(clone_dir, revision)
 
-# Local Variables:
-# mode: shell
-# End:
+    return clone_dir
+
+
+def create_source_package(repo_dir, output_dir, revision, build_args):
+    """Create source package via git-buildpackage"""
+
+    if not revision:
+        revision = 'master'
+
+    command = ['git', 'buildpackage', '--git-notify=off', '--git-force-create']
+
+#   command.append('--git-verbose')
+
+    # we are not on a proper local branch due to using git-reset but we anyway
+    # use the --git-export option
+    command.extend(['--git-ignore-branch', "--git-export-dir=%s" % output_dir,
+                    "--git-export=%s" % 'origin/' + revision])
+
+    # create local pristine-tar branch
+    try:
+        safe_run(['git', 'rev-parse', '--verify', '--quiet',
+                  'origin/pristine-tar'], cwd=repo_dir)
+        safe_run(['git', 'update-ref', 'refs/heads/pristine-tar',
+                  'origin/pristine-tar'], cwd=repo_dir)
+#        command.append('--git-pristine-tar')
+    except SystemExit:
+        command.append('--git-no-pristine-tar')
+
+    if build_args:
+        command.extend(build_args.split(' '))
+
+    logging.debug("Running in %s", repo_dir)
+
+    safe_run(command, cwd=repo_dir, interactive=sys.stdout.isatty())
+
+
+def copy_source_package(input_dir, output_dir):
+    """Copy Debian sources found in input_dir to output_dir."""
+
+    sources = safe_run(['dpkg-scansources', input_dir], cwd=input_dir)[1]
+
+    FILES_PATTERN = re.compile(r'^Files:(.*(?:\n .*)+)', flags=re.MULTILINE)
+    for match in FILES_PATTERN.findall(sources):
+        logging.info("Files:")
+        for line in match.strip().split("\n"):
+            fname = line.strip().split(' ')[2]
+            logging.info(" %s", fname)
+            shutil.copy(os.path.join(input_dir, fname),
+                        os.path.join(output_dir, fname))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Git Tarballs')
+    parser.add_argument('--url', required=True,
+                        help='upstream tarball URL to download')
+    parser.add_argument('--revision',
+                        help='revision to package')
+    parser.add_argument('--submodules',
+                        help='osc service parameter that does nothing')
+    parser.add_argument('--outdir', required=True,
+                        help='osc service parameter that does nothing')
+    parser.add_argument('--build_args', type=str,
+                        default='--git-cleaner="true" -nc -uc -us -S',
+                        help='Parameters passed to git-buildpackage')
+    parser.add_argument('--pristine-tar',
+                        help='osc service parameter that does nothing')
+
+    parser.add_argument('--verbose', '-v', action='store_true', default=False,
+                        help='enable verbose output')
+
+    args = parser.parse_args()
+
+    # force verbose mode in test-mode
+    if os.getenv('DEBUG_GIT_BUILDPACKAGE'):
+        args.verbose = True
+
+    FORMAT = "%(message)s"
+    logging.basicConfig(format=FORMAT, stream=sys.stderr, level=logging.INFO)
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    #
+    # real main
+    #
+
+    # force cleaning of our workspace on exit
+    atexit.register(cleanup, CLEANUP_DIRS)
+
+    repodir = None
+
+    # create_dirs
+    if repodir is None:
+        repodir = tempfile.mkdtemp(dir=args.outdir)
+        CLEANUP_DIRS.append(repodir)
+
+    # initial_clone
+    clone_dir = fetch_upstream(args.url, args.revision, repodir)
+
+    # create_source_package
+    create_source_package(clone_dir, repodir, revision=args.revision,
+                          build_args=args.build_args)
+
+    # copy_source_package
+    copy_source_package(repodir, args.outdir)
