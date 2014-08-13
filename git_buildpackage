@@ -73,11 +73,11 @@ def safe_run(cmd, cwd, interactive=False):
     else:
         output = proc.communicate()[0]
 
+    logging.debug("RESULT(%d): %s", proc.returncode, repr(output))
+
     if proc.returncode:
-        logging.info("ERROR(%d): %s", proc.returncode, repr(output))
-        sys.exit("Command failed(%d): %s" % (proc.returncode, repr(output)))
-    else:
-        logging.debug("RESULT(%d): %s", proc.returncode, repr(output))
+        sys.exit("ERROR(%d): %s" % (proc.returncode, ' '.join(cmd)))
+
     return (proc.returncode, output)
 
 
