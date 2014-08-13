@@ -99,12 +99,15 @@ def switch_revision(clone_dir, revision):
             safe_run(['git', 'rev-parse', '--verify', '--quiet', rev],
                      cwd=clone_dir)
             text = safe_run(['git', 'reset', '--hard', rev], cwd=clone_dir)[1]
+            revision = rev
             print text.rstrip()
             break
         except SystemExit:
             continue
     else:
         sys.exit('%s: No such revision' % revision)
+
+    return revision
 
 
 def fetch_upstream(url, revision, out_dir):
@@ -126,9 +129,6 @@ def fetch_upstream(url, revision, out_dir):
         logging.info("Detected cached repository...")
 #        UPDATE_CACHE_COMMANDS[scm](url, clone_dir, revision)
 
-    # switch_to_revision
-    switch_revision(clone_dir, revision)
-
     return clone_dir
 
 
@@ -145,7 +145,7 @@ def create_source_package(repo_dir, output_dir, revision, build_args):
     # we are not on a proper local branch due to using git-reset but we anyway
     # use the --git-export option
     command.extend(['--git-ignore-branch', "--git-export-dir=%s" % output_dir,
-                    "--git-export=%s" % 'origin/' + revision])
+                    "--git-export=%s" % revision])
 
     # create local pristine-tar branch
     try:
@@ -227,8 +227,11 @@ if __name__ == '__main__':
     # initial_clone
     clone_dir = fetch_upstream(args.url, args.revision, repodir)
 
+    # switch_to_revision
+    revision = switch_revision(clone_dir, args.revision)
+
     # create_source_package
-    create_source_package(clone_dir, repodir, revision=args.revision,
+    create_source_package(clone_dir, repodir, revision=revision,
                           build_args=args.build_args)
 
     # copy_source_package
