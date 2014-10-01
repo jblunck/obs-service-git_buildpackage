@@ -1,3 +1,11 @@
+obs-service-git-buildpackage (1.3) unstable; urgency=low
+
+  * Force interactive mode for git-buildpackage run
+  * Read site-wide configuration file /etc/obs/services/git_buildpackage
+  * Log the usage of the site-wide configuration file
+
+ -- Jan Blunck <jblunck@vyatta.com>  Wed, 01 Oct 2014 14:18:35 +0200
+
 obs-service-git-buildpackage (1.2) unstable; urgency=low
 
   * Return revision from switch_revision()
