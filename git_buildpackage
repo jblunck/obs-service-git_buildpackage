@@ -71,7 +71,7 @@ def safe_run(cmd, cwd, interactive=False):
     logging.debug("RESULT(%d): %s", proc.returncode, repr(output))
 
     if proc.returncode:
-        sys.exit("ERROR(%d): %s" % (proc.returncode, ' '.join(cmd)))
+        sys.exit("ERROR(%d): %s:\n%s" % (proc.returncode, ' '.join(cmd), repr(output)))
 
     return (proc.returncode, output)
 
