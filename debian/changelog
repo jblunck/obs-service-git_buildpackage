@@ -1,3 +1,12 @@
+obs-service-git-buildpackage (1.5) unstable; urgency=low
+
+  [ Daniel Gollub ]
+  * Make detailed gbp/git failures visible to users
+
+  [ Jan Blunck ]
+
+ -- Jan Blunck <jblunck@brocade.com>  Wed, 29 Apr 2015 02:50:04 -0700
+
 obs-service-git-buildpackage (1.4) unstable; urgency=low
 
   * Fix handling of symbolic links on cleanup
