@@ -41,5 +41,9 @@
     <allowedvalue>disable</allowedvalue>
   </parameter>
 
+  <parameter name="build_args">
+    <description>Apply build_args.  Default is '--git-cleaner="true" -nc -uc -us -S'</description>
+  </parameter>
+
 </service>
 
