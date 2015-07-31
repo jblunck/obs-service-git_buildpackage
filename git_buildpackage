@@ -190,8 +190,14 @@ def copy_source_package(input_dir, output_dir):
         for line in match.strip().split("\n"):
             fname = line.strip().split(' ')[2]
             logging.info(" %s", fname)
-            shutil.copy(os.path.join(input_dir, fname),
-                        os.path.join(output_dir, fname))
+            input_file = os.path.join(input_dir, fname)
+            output_file = os.path.join(output_dir, fname)
+
+            if (args.dch_release_update and fnmatch.fnmatch(fname, '*.dsc')):
+               with open(input_file, "a") as dsc_file:
+                   dsc_file.write("OBS-DCH-RELEASE: 1")
+
+            shutil.copy(input_file, output_file)
 
 
 if __name__ == '__main__':
@@ -230,6 +236,9 @@ if __name__ == '__main__':
                         help='Parameters passed to git-buildpackage')
     parser.add_argument('--pristine-tar',
                         help='osc service parameter that does nothing')
+    parser.add_argument('--dch-release-update', choices=['enable', 'disable'],
+                        default='disable',
+                        help='Append OBS release number')
 
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='enable verbose output')
@@ -246,6 +255,11 @@ if __name__ == '__main__':
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
+
+    if args.dch_release_update == 'enable':
+        args.dch_release_update = True
+    else:
+        args.dch_release_update = False
 
     #
     # real main

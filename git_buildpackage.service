@@ -45,5 +45,11 @@
     <description>Apply build_args.  Default is '-nc -uc -us -S'</description>
   </parameter>
 
+  <parameter name="dch-release-update">
+    <description>Append OBS release number.  Default is 'disable'</description>
+    <allowedvalue>enable</allowedvalue>
+    <allowedvalue>disable</allowedvalue>
+  </parameter>
+
 </service>
 
