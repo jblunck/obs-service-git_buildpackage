@@ -24,7 +24,7 @@ Version:        1.1
 Release:        0
 Source:         %{name}-%{version}.tar.gz
 Requires:       sed
-Requires:       awk
+Requires:       gawk
 Requires:       git-buildpackage
 Requires:       fakeroot
 Requires:       devscripts
