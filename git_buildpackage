@@ -28,6 +28,7 @@ import StringIO
 
 CLEANUP_DIRS = []
 
+BUILD_ARGS = '--git-cleaner="true" -nc -uc -us -S'
 
 def cleanup(dirs):
     '''Cleaning temporary directories.'''
@@ -129,7 +130,7 @@ def fetch_upstream(url, revision, out_dir):
     return clone_dir
 
 
-def create_source_package(repo_dir, output_dir, revision, build_args):
+def create_source_package(repo_dir, output_dir, revision):
     """Create source package via git-buildpackage"""
 
     if not revision:
@@ -154,8 +155,7 @@ def create_source_package(repo_dir, output_dir, revision, build_args):
     except SystemExit:
         command.append('--git-no-pristine-tar')
 
-    if build_args:
-        command.extend(build_args.split(' '))
+    command.extend(BUILD_ARGS.split(' '))
 
     logging.debug("Running in %s", repo_dir)
 
@@ -209,9 +209,8 @@ if __name__ == '__main__':
                         help='osc service parameter that does nothing')
     parser.add_argument('--outdir', required=True,
                         help='osc service parameter that does nothing')
-    parser.add_argument('--build_args', type=str,
-                        default='--git-cleaner="true" -nc -uc -us -S',
-                        help='Parameters passed to git-buildpackage')
+    parser.add_argument('--build_args',
+                        help='osc service parameter that does nothing')
     parser.add_argument('--pristine-tar',
                         help='osc service parameter that does nothing')
 
@@ -248,8 +247,7 @@ if __name__ == '__main__':
     revision = switch_revision(clone_dir, args.revision)
 
     # create_source_package
-    create_source_package(clone_dir, repodir, revision=revision,
-                          build_args=args.build_args)
+    create_source_package(clone_dir, repodir, revision=revision)
 
     # copy_source_package
     copy_source_package(repodir, args.outdir)
