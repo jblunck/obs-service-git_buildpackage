@@ -240,6 +240,10 @@ if __name__ == '__main__':
     if os.getenv('DEBUG_GIT_BUILDPACKAGE'):
         args.verbose = True
 
+    for arg in args.build_args.split(' '):
+        if arg == '--git-verbose':
+            args.verbose = True
+
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
