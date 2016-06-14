@@ -1,4 +1,15 @@
 -------------------------------------------------------------------
+Tue Jun 14 11:21:30 UTC 2016 - jblunck@vyatta.com
+
+- obs-service-git-buildpackage (1.6):
+  * Add gbp.conf to let 'gbp dch' handle the tag format
+  * Add missing build_args parameter spec
+  * build_args allows to inject arbitrary commands
+  * Fix awk dependency for Fedora
+  * Sanitize build_args to not allow arbitrary command execution
+  * Switch to verbose mode when build_args includes --git-verbose 
+
+-------------------------------------------------------------------
 Mon Aug  4 16:38:19 UTC 2014 - jblunck@infradead.org
 
 - Rewrite in python

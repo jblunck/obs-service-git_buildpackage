@@ -1,3 +1,19 @@
+obs-service-git-buildpackage (1.6) unstable; urgency=medium
+
+  [ Jan Blunck ]
+  * Add gbp.conf to let 'gbp dch' handle the tag format
+
+  [ Daniel Gollub ]
+  * Add missing build_args parameter spec
+  * build_args allows to inject arbitrary commands
+
+  [ Jan Blunck ]
+  * Fix awk dependency for Fedora
+  * Sanitize build_args to not allow arbitrary command execution
+  * Switch to verbose mode when build_args includes --git-verbose
+
+ -- Jan Blunck <jblunck@brocade.com>  Tue, 14 Jun 2016 13:20:48 +0200
+
 obs-service-git-buildpackage (1.5) unstable; urgency=low
 
   [ Daniel Gollub ]

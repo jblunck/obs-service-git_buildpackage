@@ -20,7 +20,7 @@ Name:           obs-service-git_buildpackage
 Summary:        An OBS source service: Create Debian source package from GIT
 License:        GPL-2.0+
 Group:          Development/Tools/Building
-Version:        1.1
+Version:        1.6
 Release:        0
 Source:         %{name}-%{version}.tar.gz
 Requires:       sed
