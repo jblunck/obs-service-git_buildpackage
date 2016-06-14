@@ -28,7 +28,6 @@ import StringIO
 
 CLEANUP_DIRS = []
 
-BUILD_ARGS = '--git-cleaner="true" -nc -uc -us -S'
 
 def cleanup(dirs):
     '''Cleaning temporary directories.'''
@@ -129,16 +128,32 @@ def fetch_upstream(url, revision, out_dir):
 
     return clone_dir
 
+def sanitize_build_args(build_args):
+    """
+    Prevent potentially dangerous arguments from being passed to gbp, e.g.
+    via cleaner, postexport or other hooks.
+    """
 
-def create_source_package(repo_dir, output_dir, revision):
+    safe_args = [ '--git-verbose' ]
+    p = re.compile('--git-.*|--hook-.*|--.*-hook=.*')
+
+    gbp_args  = [ arg for arg in build_args if arg in safe_args ]
+    dpkg_args = [ arg for arg in build_args if not p.match(arg) ]
+
+    ignored_args = list(set(build_args) - set(gbp_args + dpkg_args))
+    if ignored_args:
+        logging.info("Ignoring build_args: %s" % ignored_args)
+
+    return gbp_args + dpkg_args
+
+def create_source_package(repo_dir, output_dir, revision, build_args):
     """Create source package via git-buildpackage"""
 
     if not revision:
         revision = 'master'
 
-    command = ['git', 'buildpackage', '--git-notify=off', '--git-force-create']
-
-#   command.append('--git-verbose')
+    command = ['git', 'buildpackage', '--git-notify=off', '--git-force-create',
+               '--git-cleaner="true"' ]
 
     # we are not on a proper local branch due to using git-reset but we anyway
     # use the --git-export option
@@ -155,7 +170,8 @@ def create_source_package(repo_dir, output_dir, revision):
     except SystemExit:
         command.append('--git-no-pristine-tar')
 
-    command.extend(BUILD_ARGS.split(' '))
+    if build_args:
+        command.extend(sanitize_build_args(build_args.split(' ')))
 
     logging.debug("Running in %s", repo_dir)
 
@@ -209,8 +225,9 @@ if __name__ == '__main__':
                         help='osc service parameter that does nothing')
     parser.add_argument('--outdir', required=True,
                         help='osc service parameter that does nothing')
-    parser.add_argument('--build_args',
-                        help='osc service parameter that does nothing')
+    parser.add_argument('--build_args', type=str,
+                        default='-nc -uc -us -S',
+                        help='Parameters passed to git-buildpackage')
     parser.add_argument('--pristine-tar',
                         help='osc service parameter that does nothing')
 
@@ -222,6 +239,10 @@ if __name__ == '__main__':
     # force verbose mode in test-mode
     if os.getenv('DEBUG_GIT_BUILDPACKAGE'):
         args.verbose = True
+
+    for arg in args.build_args.split(' '):
+        if arg == '--git-verbose':
+            args.verbose = True
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
@@ -247,7 +268,8 @@ if __name__ == '__main__':
     revision = switch_revision(clone_dir, args.revision)
 
     # create_source_package
-    create_source_package(clone_dir, repodir, revision=revision)
+    create_source_package(clone_dir, repodir, revision=revision,
+                          build_args=args.build_args)
 
     # copy_source_package
     copy_source_package(repodir, args.outdir)
