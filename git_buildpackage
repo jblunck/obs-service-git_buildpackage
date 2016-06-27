@@ -134,10 +134,10 @@ def sanitize_build_args(build_args):
     via cleaner, postexport or other hooks.
     """
 
-    safe_args = [ '--git-verbose' ]
+    safe_args = re.compile('--git-verbose|--git-upstream-tree=.*|--git-no-pristine-tar')
     p = re.compile('--git-.*|--hook-.*|--.*-hook=.*')
 
-    gbp_args  = [ arg for arg in build_args if arg in safe_args ]
+    gbp_args  = [ arg for arg in build_args if safe_args.match(arg) ]
     dpkg_args = [ arg for arg in build_args if not p.match(arg) ]
 
     ignored_args = list(set(build_args) - set(gbp_args + dpkg_args))
