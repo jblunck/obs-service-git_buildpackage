@@ -120,8 +120,6 @@ def fetch_upstream(url, revision, out_dir):
 
         safe_run(['git', 'clone', '--no-checkout', url, clone_dir],
                  cwd=out_dir, interactive=sys.stdout.isatty())
-#        safe_run(['git', 'submodule', 'update', '--init', '--recursive'],
-#                 cwd=clone_dir)
     else:
         logging.info("Detected cached repository...")
 #        UPDATE_CACHE_COMMANDS[scm](url, clone_dir, revision)
@@ -146,7 +144,7 @@ def sanitize_build_args(build_args):
 
     return gbp_args + dpkg_args
 
-def create_source_package(repo_dir, output_dir, revision, build_args):
+def create_source_package(repo_dir, output_dir, revision, build_args, submodules):
     """Create source package via git-buildpackage"""
 
     if not revision:
@@ -159,6 +157,11 @@ def create_source_package(repo_dir, output_dir, revision, build_args):
     # use the --git-export option
     command.extend(['--git-ignore-branch', "--git-export-dir=%s" % output_dir,
                     "--git-export=%s" % revision])
+
+    # GBP can load submodules without having to run the git command, and will
+    # ignore submodules even if loaded manually unless this option is passed.
+    if submodules:
+        command.extend(['--git-submodules'])
 
     # create local pristine-tar branch
     try:
@@ -227,8 +230,9 @@ if __name__ == '__main__':
                         help='upstream tarball URL to download')
     parser.add_argument('--revision',
                         help='revision to package')
-    parser.add_argument('--submodules',
-                        help='osc service parameter that does nothing')
+    parser.add_argument('--submodules', choices=['enable', 'disable'],
+                        default='enable',
+                        help='Include git submodules in source artefact')
     parser.add_argument('--outdir', required=True,
                         help='osc service parameter that does nothing')
     parser.add_argument('--build_args', type=str,
@@ -261,6 +265,11 @@ if __name__ == '__main__':
     else:
         args.dch_release_update = False
 
+    if args.submodules == 'enable':
+        args.submodules = True
+    else:
+        args.submodules = False
+
     #
     # real main
     #
@@ -283,7 +292,8 @@ if __name__ == '__main__':
 
     # create_source_package
     create_source_package(clone_dir, repodir, revision=revision,
-                          build_args=args.build_args)
+                          build_args=args.build_args,
+                          submodules=args.submodules)
 
     # copy_source_package
     copy_source_package(repodir, args.outdir)
