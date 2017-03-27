@@ -25,7 +25,7 @@ Release:        0
 Source:         %{name}-%{version}.tar.gz
 Requires:       sed
 Requires:       gawk
-Requires:       git-buildpackage
+Requires:       git-buildpackage >= 0.6.0
 Requires:       fakeroot
 Requires:       devscripts
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build

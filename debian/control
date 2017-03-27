@@ -8,6 +8,6 @@ Build-Depends: debhelper (>= 9)
 Package: obs-service-git-buildpackage
 Section: misc
 Architecture: all
-Depends: ${misc:Depends}, devscripts, fakeroot, git-buildpackage, gawk
+Depends: ${misc:Depends}, devscripts, fakeroot, git-buildpackage (>= 0.6.0), gawk
 Description: $prefix OBS source service version
  This package sets up the version for an OBS package build
